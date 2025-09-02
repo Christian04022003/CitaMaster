@@ -1,22 +1,18 @@
-// src/features/auth/screens/LoginScreen.js
 import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
-// Importa también la acción loginApple
 import { login, loginApple } from '../store/authSlice';
 import { Input } from '../../../components/Input';
 import { Button } from '../../../components/Button';
 import { SocialLoginButton } from '../components/SocialLoginButton';
 import { useTheme } from '../../../context/ThemeContext';
-import { colors } from '../../../context/theme'; // Esta importación es innecesaria
+import { colors } from '../../../context/theme';
 
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const dispatch = useDispatch();
   const { isLoading, error } = useSelector((state) => state.auth);
-
-  // La forma correcta de acceder a los colores es desde el hook
   const { colors } = useTheme();
 
   const handleLogin = () => {
@@ -24,12 +20,11 @@ const LoginScreen = () => {
   };
 
   return (
-    // Usa los estilos dinámicos del tema en la vista principal
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Text style={[styles.title, { color: colors.textOnBackground }]}>Iniciar Sesión</Text>
       
       <Input
-        placeholder="Correo Electrónico"
+        placeholder="Correo Electronico"
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
@@ -48,7 +43,6 @@ const LoginScreen = () => {
       <Button
         onPress={handleLogin}
         disabled={isLoading}
-        // Aplica el color del botón desde el tema
         style={[styles.loginButton, { backgroundColor: colors.primary }]}
       >
         <Text style={[styles.loginButtonText, { color: colors.buttonText }]}>{isLoading ? 'Cargando...' : 'Entrar'}</Text>
@@ -63,7 +57,6 @@ const LoginScreen = () => {
       <SocialLoginButton
         company="apple"
         title="Entrar con Apple"
-        // Llama a la acción de loginApple que importaste
         onPress={() => dispatch(loginApple())}
       />
     </View>
@@ -87,7 +80,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   loginButton: {
-    // Estilos base del botón, el color se define de forma dinámica
     padding: 10,
     borderRadius: 5,
     alignItems: 'center',

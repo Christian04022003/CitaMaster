@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert } from "react-native";
 import { Formik } from 'formik';
 import * as Yup from 'yup';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,6 +7,8 @@ import { useNavigation } from '@react-navigation/native';
 import { Button } from "../../../components/Button";
 import { Input } from "../../../components/Input";
 import { colors } from "../../../context/theme";
+import firestore, { addDoc, serverTimestamp } from '@react-native-firebase/firestore';
+import { useSelector } from 'react-redux';
 
 
 // Esquema de validación con Yup
@@ -24,6 +26,9 @@ const validationSchema = Yup.object().shape({
 export const AddServiceScreen = () => {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation();
+    const user = useSelector(state => state.auth.user);
+
+    const [isLoading, setIsLoading] = useState(false);
 
     const initialValues = {
         serviceName: '',
@@ -31,17 +36,47 @@ export const AddServiceScreen = () => {
         serviceType: '',
     };
 
-    const handleSubmit = (values) => {
-        navigation.navigate('Services')
+    const handleSaveService = async (values, { resetForm }) => {
+        setIsLoading(true);
+
+        if (!user || !user.uid) {
+            Alert.alert('Error', 'No hay un usuario autenticado para guardar los servicios.');
+            setIsLoading(false);
+            return;
+        }
+
+        try {
+            // Referencia a la subcolección 'services' dentro del documento del negocio
+            const servicesRef = firestore().collection('businesses').doc(user.uid).collection('services');
+
+            // Guarda el nuevo servicio en la subcolección
+            await addDoc(servicesRef, {
+                ...values,
+                createdAt: serverTimestamp(),
+            });
+
+            Alert.alert('Éxito', 'Servicio agregado correctamente.');
+            resetForm(); // Limpia el formulario para agregar otro servicio
+
+        } catch (error) {
+            console.error("Error al guardar el servicio en Firestore:", error);
+            Alert.alert('Error', 'Hubo un problema al guardar el servicio. Intenta de nuevo.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleFinish = () => {
+        navigation.navigate('Services');
     };
 
     return (
         <Formik
             initialValues={initialValues}
             validationSchema={validationSchema}
-            onSubmit={handleSubmit}
+            onSubmit={handleSaveService}
         >
-            {({ handleChange, handleBlur, handleSubmit, values, errors, touched }) => (
+            {({ handleChange, handleBlur, handleSubmit, values, errors, touched, resetForm }) => (
                 <ScrollView contentContainerStyle={[style.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
                     <Text style={style.textTitle}>¿Qué servicios Ofreces?</Text>
 
@@ -79,9 +114,18 @@ export const AddServiceScreen = () => {
                         <Text style={style.errorText}>{errors.serviceDuration}</Text>
                     )}
 
-                    <Button onPress={handleSubmit}>
-                        <Text style={style.buttonText}>Listo</Text>
+                    <Button onPress={handleSubmit} disabled={isLoading}>
+                        {isLoading ? (
+                            <ActivityIndicator color="white" />
+                        ) : (
+                            <Text style={style.buttonText}>Agregar Servicio</Text>
+                        )}
                     </Button>
+
+                    <Button onPress={handleFinish} style={style.finishButton}>
+                        <Text style={style.buttonText}>Finalizar</Text>
+                    </Button>
+
                 </ScrollView>
             )}
         </Formik>
@@ -93,7 +137,7 @@ const style = StyleSheet.create({
         justifyContent: 'flex-start',
         paddingHorizontal: 20,
         backgroundColor: colors.background,
-        flex: 1
+        flexGrow: 1
     },
     textTitle: {
         textAlign: 'center',
@@ -119,19 +163,14 @@ const style = StyleSheet.create({
         width: '100%',
         textAlign: 'left',
     },
-    card: {
-        backgroundColor: colors.button,
-        width: '100%',
-        height: 400,
-        borderRadius: 12,
-        padding: 10,
-        marginBottom: 10,
-        marginTop: 20,
-    },
     buttonText: {
         textAlign: 'center',
         color: 'white',
         fontWeight: 'bold',
+    },
+    finishButton: {
+        marginTop: 20,
+        backgroundColor: 'darkgreen',
     }
 });
 
