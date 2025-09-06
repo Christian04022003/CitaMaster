@@ -1,44 +1,124 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView } from "react-native";
-import { NavigationContainer } from '@react-navigation/native';
+
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { Button } from "../../../components/Button"; 
+import { Button } from "../../../components/Button";
 import { colors } from "../../../context/theme";
+import { useNavigation } from '@react-navigation/native';
+import { useSelector } from 'react-redux';
+import firestore, { addDoc, serverTimestamp } from '@react-native-firebase/firestore';
+
+
+
+
 
 
 // ---------- Pantallas ----------
 export const AppointmentScreen = () => {
-  const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
+  const user = useSelector(state => state.auth.user);
+  const [isLoading, setIsLoading] = useState(false);
+  const [workers, setWorkers] = useState([]);
+
+
+
+
+  const handleAddAppointment = () => {
+    navigation.navigate('AddAppointment')
+  }
+
+  useEffect(() => {
+    if (!user || !user.uid) {
+      setIsLoading(false);
+      return;
+    }
+
+    const servicesRef = firestore().collection('businesses').doc(user.uid).collection('workers');
+
+    const unsubscribe = servicesRef.onSnapshot(querySnapshot => {
+      const fetchedWorkers = [];
+      querySnapshot.forEach(doc => {
+        fetchedWorkers.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      setWorkers(fetchedWorkers);
+      setIsLoading(false);
+    }, error => {
+      console.error("Error al obtener servicios:", error);
+      Alert.alert('Error', 'Hubo un problema al cargar los servicios.');
+      setIsLoading(false);
+    });
+
+    // Retorna una función de limpieza para desuscribirse del listener
+    return () => unsubscribe();
+  }, [user]);
+
+    useEffect(() => {
+    if (!user || !user.uid) {
+      setIsLoading(false);
+      return;
+    }
+
+    const servicesRef = firestore().collection('businesses').doc(user.uid).collection('services');
+
+    const unsubscribe = servicesRef.onSnapshot(querySnapshot => {
+      const fetchedServices = [];
+      querySnapshot.forEach(doc => {
+        fetchedServices.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      setServices(fetchedServices);
+      setIsLoading(false);
+    }, error => {
+      console.error("Error al obtener servicios:", error);
+      Alert.alert('Error', 'Hubo un problema al cargar los servicios.');
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
   return (
-    <View style={[style.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+    <SafeAreaView style={style.container} edges={['top']}>
       <Text style={style.textTitle}>Citas</Text>
 
-      <Button style={style.Button}>
+      <Button style={style.Button}
+        onPress={handleAddAppointment}
+      >
         <Text style={style.buttonText}>Agregar Cita</Text>
       </Button>
 
       <ScrollView style={style.card}>
-        <Text style={style.text}>Aquí se mostrarán las citas</Text>
+        {workers.length > 0 ? (
+          workers.map((worker) => (
+            <View key={worker.id} style={style.AppointmentItem}>
+
+              <Text style={style.AppointmentText}>Hora de inicio: </Text>
+              <Text style={style.AppointmentText}>Trabajador: {worker.workerName}</Text>
+              <Text style={style.AppointmentText}>Servicio:  </Text>
+              <Text style={style.AppointmentText}>Tipo: </Text>
+
+            </View>
+          ))
+
+        ) : (<Text style={style.noServicesText}>Aún no has agregado ningún servicio.</Text>
+        )}
+
+
       </ScrollView>
-    </View>
+
+
+
+    </SafeAreaView>
   );
 };
 
-export const EmployeeScreen = () => (
-  <View style={style.container}>
-    <Text style={style.textTitle}>Empleados</Text>
-    <Text style={style.text}>Aquí se mostrarán los empleados</Text>
-  </View>
-);
-
-export const ServiceScreen = () => (
-  <View style={style.container}>
-    <Text style={style.textTitle}>Servicios</Text>
-    <Text style={style.text}>Aquí se mostrarán los servicios</Text>
-  </View>
-);
 
 // ---------- Bottom Tabs ----------
 const Tab = createBottomTabNavigator();
@@ -48,6 +128,7 @@ function MyTabs() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false, // oculta el header superior
+        tabBarStyle: { display: 'flex' }, // asegura que la barra siempre aparezca
         tabBarIcon: ({ color, size }) => {
           let iconName;
 
@@ -72,22 +153,15 @@ function MyTabs() {
   );
 }
 
-// ---------- App ----------
-export default function App() {
-  return (
-    <NavigationContainer>
-      <MyTabs />
-    </NavigationContainer>
-  );
-}
+
 
 // ---------- Styles ----------
 const style = StyleSheet.create({
   container: {
+    flex: 1,
     justifyContent: 'flex-start',
     paddingHorizontal: 20,
     backgroundColor: colors.background,
-    flex: 1
   },
   textTitle: {
     textAlign: 'center',
@@ -122,5 +196,20 @@ const style = StyleSheet.create({
   },
   Button: {
     marginTop: 20,
-  }
+  },
+  AppointmentItem: {
+    flexDirection: 'column',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-start',
+    backgroundColor: colors.input,
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  AppointmentText: {
+    color: colors.textOnInput,
+    fontWeight: 'bold',
+
+
+  },
 });
